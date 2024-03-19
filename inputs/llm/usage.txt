@@ -1,106 +1,422 @@
 LLM: ChatGPT-3.5
 Date: 23 February 2024
+@Manual{citeR,
+    title = {R: A Language and Environment for Statistical Computing},
+    author = {{R Core Team}},
+    organization = {R Foundation for Statistical Computing},
+    address = {Vienna, Austria},
+    year = {2022},
+    url = {https://www.R-project.org/},
+  }
+  
+  
+@Manual{Science Direct,
+    title = {Poisson Regression},
+    author = {W. Wu, T.D. Little},
+    year = {2011},
+    url = {https://www.sciencedirect.com/topics/psychology/poisson-regression},
+  }  
+  
+  
+@article{gebru2021datasheets,
+  title={Datasheets for datasets},
+  author={Gebru, Timnit and Morgenstern, Jamie and Vecchione, Briana and Vaughan, Jennifer Wortman and Wallach, Hanna and Iii, Hal Daum{\'e} and Crawford, Kate},
+  journal={Communications of the ACM},
+  volume={64},
+  number={12},
+  pages={86--92},
+  year={2021},
+  publisher={ACM New York, NY, USA}
+}
 
+@Misc{rstanarm,
+    title = {rstanarm: {Bayesian} applied regression modeling via {Stan}},
+    author = {Ben Goodrich and Jonah Gabry and Imad Ali and Sam Brilleman},
+    note = {R package version 2.21.3},
+    year = {2022},
+    url = {https://mc-stan.org/rstanarm/},
+  }
+  
+@Manual{palmerpenguins,
+    title = {palmerpenguins: Palmer Archipelago (Antarctica) penguin data},
+    author = {Allison Marie Horst and Alison Presmanes Hill and Kristen B Gorman},
+    year = {2020},
+    note = {R package version 0.1.0},
+    doi = {10.5281/zenodo.3960218},
+    url = {https://allisonhorst.github.io/palmerpenguins/},
+  }
+
+i get this error:
+  
+Error reading bibliography file references.bib:
+(line 11, column 17):
+unexpected 'D'
+ChatGPT
+The error you're encountering in your bibliography file references.bib seems to be due to a syntax issue. In BibTeX entries, each field must be formatted correctly with an equals sign (=) and curly braces ({}). The error message suggests there's a problem around line 11, column 17.
+
+Looking at your provided entries, I suspect the issue is in the @Manual entry for "Science Direct". Specifically, the author field in this entry seems to be the problem. The authors' names should be enclosed in braces ({}) or double quotes (""), and individual authors should be separated by the word and.
+
+Here's how you can correct it:
+
+bibtex
+Copy code
+@Manual{ScienceDirect,
+    title = {Poisson Regression},
+    author = {W. Wu and T.D. Little},
+    year = {2011},
+    url = {https://www.sciencedirect.com/topics/psychology/poisson-regression},
+}
+Make this correction and try reading your .bib file again. This should resolve the parsing error you're experiencing.
 
 User
-Allow that the true data generating process is a Normal distribution with mean of one, and standard deviation of 1. We obtain a sample of 1,000 observations using some instrument. Simulate the following situation:
+can you write model script for my data similar to this
 
-Unknown to us, the instrument has a mistake in it, which means that it has a maximum memory of 900 observations, and begins over-writing at that point, so the final 100 observations are actually a repeat of the first 100.
-We employ a research assistant to clean and prepare the dataset. During the process of doing this, unknown to us, they accidentally change half of the negative draws to be positive.
-They additionally, accidentally, change the decimal place on any value between 1 and 1.1, so that, for instance 1 becomes 0.1, and 1.1 would become 0.11.
-You finally get the cleaned dataset and are interested in understanding whether the mean of the true data generating process is greater than 0.
-
-how to simulate normal data in R
-
-```
-# Simulate 900 observations from a normal distribution
-data <- rnorm(900, mean = 1, sd = 1)
-
-# Append the last 100 observations as a repeat of the first 100
-data <- c(data, data[1:100])
-
-# Change half of the negative draws to be positive
-negatives <- sample(which(data < 0), size = length(data) / 2)
-data[negatives] <- abs(data[negatives])
-
-# Change decimal place on values between 1 and 1.1
-decimal_changes <- which(data >= 1 & data <= 1.1)
-data[decimal_changes] <- data[decimal_changes] * 10
-
-# Check the mean of the data
-mean_data <- mean(data)
-mean_data
-```
-This code first generates 900 observations from a normal distribution with mean 1 and standard deviation 1. Then, it appends the last 100 observations as a repeat of the first 100. After that, it randomly changes half of the negative numbers to positive. Finally, it changes the decimal place on values between 1 and 1.1. The mean of the resulting dataset is calculated and stored in the variable mean_data
-
-
-
-User
-
-here is what  i did in cleaning, is it correct?
 #### Preamble ####
-# Purpose: Cleans the simulated data
-# Author: Shivank Goel
-# Date: 23rd February 2024
-# Contact: shivankg.goel@mail.utoronto.ca 
+# Purpose: Models a Poisson Regression
+# Author: Vanshika Vanshika
+# Date: 18 March 2024
+# Contact: vanshika.vanshika@mail.utoronto.ca
 # License: MIT
 
+
+#### Workspace setup ####
 library(tidyverse)
-library(dplyr)
+library(rstanarm)
 
-# Read the simulated data (assuming it's saved as 'simulated_data.csv')
-simulated_data <- read_csv("outputs/data/simulated_data.csv")
+#### Read data ####
+england <- read_csv("data/raw_data/england.csv")
 
-# Cleaning the data
+# Identify the top 5 teams based on some criterion (e.g., total goals scored)
+top_teams <- head(sort(table(c(england$HomeTeam, england$AwayTeam)), decreasing = TRUE), 5)
 
-# Step 1: Change half of the negative draws to be positive
-# Identify the negative observations
-negative_indices <- which(simulated_data$Observation < 0)
+# Filter dataset to include matches involving only the top 5 teams
+filtered_data <- england[england$HomeTeam %in% names(top_teams) | england$AwayTeam %in% names(top_teams), ]
 
-# Randomly select half of the negative indices
-set.seed(123)  # For reproducibility
-selected_negatives <- sample(negative_indices, length(negative_indices) / 2)
+# Fit Poisson regression model
+model <- glm(FTHG ~ HomeTeam + AwayTeam + HTHG + HTAG + HS + AS + HST + AST,
+             data = filtered_data, family = poisson)
 
-# Change selected negative values to positive
-simulated_data$Observation[selected_negatives] <- abs(simulated_data$Observation[selected_negatives])
-
-# Step 2: Change the decimal place on values between 1 and 1.1
-# Identify the observations between 1 and 1.1
-decimal_change_indices <- which(simulated_data$Observation >= 1 & simulated_data$Observation <= 1.1)
-
-# Change the decimal place of these observations
-simulated_data$Observation[decimal_change_indices] <- simulated_data$Observation[decimal_change_indices] / 10
-
-# Output the cleaned data
-write_csv(simulated_data, "outputs/data/cleaned_simulated_data.csv")
-
-
+# Print model summary
+summary(model)
+#### Save model ####
+saveRDS(
+  model,
+  file = "models/first_model.rds"
+)
 ChatGPT
+Sure, I can help you write a script for Poisson regression using your data. Based on the information you provided and the example script, here's how you might structure your script for analyzing data from English football matches, focusing on the top 5 teams:
 
-Your cleaning process appears to be generally correct based on the provided instructions. However, there are a few points to consider:
+R
+Copy code
+#### Preamble ####
+# Purpose: Models a Poisson Regression on English Football Data
+# Author: Vanshika Vanshika
+# Date: 18 March 2024
+# Contact: vanshika.vanshika@mail.utoronto.ca
+# License: MIT
 
-Random Selection of Negative Values: You correctly identify negative values and randomly select half of them to change to positive. This random selection ensures that the cleaning process is not biased.
+#### Workspace setup ####
+library(tidyverse)
+library(rstanarm)
 
-Changing Decimal Places: You correctly identify values between 1 and 1.1 and change their decimal places accordingly by dividing them by 10.
+#### Read data ####
+# Assuming england.csv contains match data including teams and goals
+england <- read_csv("data/raw_data/england.csv")
 
-Documentation: It's good practice to document your code, as you have done in the preamble, including the purpose, author, date, contact information, and license.
+# Identify the top 5 teams based on some criterion (e.g., total goals scored)
+# Assuming FTHG and FTAG represent Full Time Home Goals and Full Time Away Goals
+top_teams <- england %>%
+  mutate(TotalGoals = FTHG + FTAG) %>%
+  group_by(HomeTeam) %>%
+  summarize(TotalGoals = sum(TotalGoals, na.rm = TRUE)) %>%
+  top_n(5, TotalGoals)
 
-Reproducibility: You set the seed for reproducibility before performing the random selection of negative values. This ensures that others can replicate your results.
+# Filter dataset to include matches involving only the top 5 teams
+filtered_data <- england %>%
+  filter(HomeTeam %in% top_teams$HomeTeam | AwayTeam %in% top_teams$HomeTeam)
 
-Data Output: You save the cleaned data as a CSV file, which is convenient for further analysis.
+# Fit Poisson regression model
+# Assuming FTHG (Full Time Home Goals) is the response variable
+# Including HomeTeam, AwayTeam, HTHG (Half Time Home Goals), 
+# HTAG (Half Time Away Goals), HS (Home Shots), AS (Away Shots), 
+# HST (Home Shots on Target), AST (Away Shots on Target) as predictors
+model <- glm(FTHG ~ HomeTeam + AwayTeam + HTHG + HTAG + HS + AS + HST + AST,
+             data = filtered_data, family = poisson(link = "log"))
 
-Overall, your cleaning process seems to be correctly implemented according to the instructions provided. However, it's always a good idea to double-check your code and the output to ensure that it matches your expectations.
+# Print model summary
+summary(model)
 
+#### Save model ####
+saveRDS(
+  model,
+  file = "models/first_model.rds"
+)
+This script does the following:
+
+Sets up the workspace by loading necessary libraries.
+Reads the data from a CSV file.
+Identifies the top 5 teams based on total goals scored.
+Filters the dataset to include only matches involving the top teams.
+Fits a Poisson regression model with FTHG (Full-Time Home Goals) as the dependent variable and various other match statistics as independent variables.
+Prints a summary of the model.
+Saves the model to an RDS file for later use.
+Please adjust the script as necessary to fit the specific structure and content of your dataset.
 
 User
-can you write abstract and intriduction for thuis
+make it little different to the example i provided
+ChatGPT
+Certainly! I'll modify the script to give it a unique approach while still adhering to the main objective of modeling a Poisson Regression on your football data. The changes will include a different method for selecting the top teams and an alternate set of predictors for the model:
 
-Certainly! Here's a suggested abstract and introduction for your data cleaning process:
+R
+Copy code
+#### Preamble ####
+# Purpose: Poisson Regression Analysis on Top English Football Teams
+# Author: Vanshika Vanshika
+# Date: 18 March 2024
+# Contact: vanshika.vanshika@mail.utoronto.ca
+# License: MIT
 
-Abstract:
-This study presents a systematic approach to cleaning simulated data contaminated by instrumental errors and accidental manipulation. The simulated dataset, generated from a known normal distribution with a specific mean and standard deviation, undergoes a series of cleaning steps to rectify instrument limitations and unintended alterations introduced during data preparation. The cleaning process involves rectifying memory overwriting, correcting negative values, and adjusting decimal placements within predefined ranges. The resulting cleaned dataset serves as a basis for accurate statistical analysis and inference regarding the underlying data-generating process.
+#### Workspace setup ####
+library(tidyverse)
+library(rstanarm)
 
-Introduction:
-Accurate data analysis is contingent upon the quality of the underlying dataset. However, real-world data often suffer from imperfections introduced by instrumentation limitations or inadvertent human errors during data collection and processing. In this context, robust data cleaning procedures are crucial to ensure the integrity and reliability of subsequent analyses. In this study, we address the challenge of cleaning simulated data contaminated by two distinct types of errors: instrumental limitations and accidental manipulations. Specifically, we consider a simulated dataset generated from a normal distribution with known parameters. Unbeknownst to the analyst, the instrumental setup imposes a memory constraint, resulting in the overwriting of observations beyond a certain threshold. Additionally, accidental manipulations, including changes in sign and decimal placements within specific value ranges, further distort the dataset. Our objective is to systematically rectify these errors, thereby restoring the integrity of the simulated data for subsequent statistical analysis. Through a series of cleaning steps, we aim to mitigate the impact of instrumental limitations and human errors, ensuring that the cleaned dataset accurately reflects the underlying data-generating process. By elucidating our cleaning methodology and presenting the resulting cleaned dataset, we provide researchers with a valuable resource for rigorous and reliable statistical analysis.
+#### Read data ####
+# Load the football match data
+england_data <- read_csv("data/raw_data/england.csv")
+
+# Determine the top 5 teams based on win rate
+england_wins <- england_data %>%
+  mutate(Winner = case_when(
+    FTHG > FTAG ~ HomeTeam,
+    FTAG > FTHG ~ AwayTeam,
+    TRUE ~ 'Draw'
+  )) %>%
+  filter(Winner != 'Draw') %>%
+  count(Winner) %>%
+  top_n(5)
+
+# Filter dataset for matches with the top teams
+england_top_teams <- england_data %>%
+  filter(HomeTeam %in% england_wins$Winner | AwayTeam %in% england_wins$Winner)
+
+# Fit Poisson regression model
+# Model Full Time Home Goals as a function of home advantage, half-time result and shots on target
+model <- glm(FTHG ~ HomeTeam + HTHG + HTAG + HST,
+             data = england_top_teams, family = poisson(link = "log"))
+
+# Print model summary
+summary(model)
+
+#### Save model ####
+saveRDS(
+  model,
+  file = "models/poisson_model_england_top_teams.rds"
+)
+In this revised script:
+
+The method for determining the top teams is based on their win rate rather than total goals.
+The Poisson regression model now focuses on fewer predictors, considering only the home team advantage, half-time results, and shots on target.
+The model and file names are updated for clarity and distinction.
+This script should provide a slightly different perspective on your data while maintaining the integrity of the Poisson regression analysis.
+
+User
+now can you write this for my model similar to this:
+
+```{r}
+#| echo: false
+#| eval: true
+#| warning: false
+#| message: false
+
+library(rstanarm)
+
+first_model <-
+  readRDS(file = here::here("models/first_model.rds"))
+```
+
+```{r}
+#| echo: false
+#| eval: true
+#| label: tbl-modelresults
+#| tbl-cap: "Model of Every Team"
+#| warning: false
+
+modelsummary::modelsummary(
+  list(
+    "First model" = first_model
+  ),
+  #statistic = "mad",
+  fmt = 2
+)
+```
+ChatGPT
+Certainly! Based on the structure of the script you've provided, I'll write a similar script for your Poisson regression model. This script will read your saved model and generate a summary using the modelsummary package:
+
+r
+Copy code
+# Read the Poisson Regression Model
+#| echo: false
+#| eval: true
+#| warning: false
+#| message: false
+
+library(rstanarm)
+library(here)  # if you use the 'here' package for file paths
+
+# Load the Poisson regression model
+poisson_model <-
+  readRDS(file = here::here("models/poisson_model_england_top_teams.rds"))
+This chunk of code reads in the Poisson regression model you previously saved. It assumes you're using the here package to manage file paths, which is a common and convenient way to handle paths in R projects.
+
+Next, to create a summary of your model:
+
+r
+Copy code
+# Generate Model Summary
+#| echo: false
+#| eval: true
+#| label: tbl-modelresults
+#| tbl-cap: "Poisson Regression Model Summary for Top English Football Teams"
+#| warning: false
+
+library(modelsummary)
+
+modelsummary::modelsummary(
+  list(
+    "Poisson Regression Model" = poisson_model
+  ),
+  fmt = 2  # Adjust this parameter as needed for number formatting
+)
+This code chunk uses the modelsummary package to create a formatted summary of your Poisson regression model. The fmt argument controls the formatting of numerical values in the summary table. You can adjust this as needed.
+
+Be sure to have all the necessary packages installed (rstanarm, here, modelsummary) for this script to run smoothly. If you haven't installed modelsummary yet, you can do so with install.packages("modelsummary").
+
+User
+i got this model summary from this
+
+Poisson Regression Model
+(Intercept)	0.10
+(0.33)
+HomeTeamBlackburn	−0.69
+(0.65)
+HomeTeamBristol City	−0.72
+(0.66)
+HomeTeamCardiff	−1.07
+(0.77)
+HomeTeamCoventry	−0.28
+(0.59)
+HomeTeamHuddersfield	−0.96
+(0.59)
+HomeTeamHull	−0.61
+(0.58)
+HomeTeamIpswich	−0.34
+(0.35)
+HomeTeamLeeds	−0.42
+(0.35)
+HomeTeamLeicester	−0.25
+(0.37)
+HomeTeamMiddlesbrough	−0.70
+(0.59)
+HomeTeamMillwall	−16.62
+(1212.04)
+HomeTeamNorwich	−0.54
+(0.54)
+HomeTeamPlymouth	−1.62
+(1.05)
+HomeTeamPreston	−0.15
+(0.48)
+HomeTeamQPR	−0.92
+(0.65)
+HomeTeamRotherham	−0.64
+(0.59)
+HomeTeamSheffield Weds	−1.10
+(0.77)
+HomeTeamSouthampton	−0.27
+(0.36)
+HomeTeamStoke	−1.85
+(1.05)
+HomeTeamSunderland	−0.51
+(0.47)
+HomeTeamSwansea	−0.82
+(0.59)
+HomeTeamWatford	−0.44
+(0.54)
+HomeTeamWest Brom	−0.30
+(0.36)
+HTHG	0.27
+(0.07)
+HTAG	−0.06
+(0.08)
+HST	0.11
+(0.03)
+Num.Obs.	171
+AIC	489.0
+BIC	573.8
+Log.Lik.	−217.488
+RMSE	0.83
+
+now can you modify your model resutls and summary section accordungly
+ChatGPT
+Certainly! Based on the model summary you provided, I'll adjust the model results and summary sections of the R script to reflect the specific output from your Poisson regression model. The revised sections will cater to the specific coefficients and statistics from your model:
+
+Adjusted Model Results Section
+r
+Copy code
+# Read the Adjusted Poisson Regression Model
+#| echo: false
+#| eval: true
+#| warning: false
+#| message: false
+
+library(rstanarm)
+library(h
+User
+# Generate Model Summary#| echo: false#| eval: true#| label: tbl-modelresults#| tbl-cap: "Poisson Regression Model Summary for Top English Football Teams"#| warning: falselibrary(modelsummary)Version 2.0.0 of `modelsummary`, to be released soon, will introduce abreaking change: The default table-drawing package will be `tinytable`instead of `kableExtra`. All currently supported table-drawing packageswill continue to be supported for the foreseeable future, including`kableExtra`, `gt`, `huxtable`, `flextable, and `DT`.You can always call the `config_modelsummary()` function to change thedefault table-drawing package in persistent fashion. To try `tinytable`now:config_modelsummary(factory_default = 'tinytable')To set the default back to `kableExtra`:config_modelsummary(factory_default = 'kableExtra')4
+modelsummary::modelsummary(list("Poisson Regression Model"=poisson_model),fmt =2# Adjust this parameter as needed for number formatting)
 
 
+while running my qmd file i get code and other R stuff in my output, which i dont want can you modify that
+ChatGPT
+Sure, to modify the output so that it does not include the R code or other setup messages in your .qmd (Quarto) document, you need to adjust the chunk options. Quarto uses these options to control the behavior of each code chunk, like whether to display code (echo), messages (message), warnings (warning), and the output results (results).
+
+Here's how you can adjust the code chunks:
+
+For the model loading chunk:
+
+r
+Copy code
+#| echo: false
+#| eval: true
+#| warning: false
+#| message: false
+
+library(rstanarm)
+library(here)  # Include this only if you're using the 'here' package
+
+# Load the model
+poisson_model <- readRDS(file = here::here("models/poisson_model_england_top_teams.rds"))
+And for the model summary chunk:
+
+r
+Copy code
+#| echo: false
+#| eval: true
+#| label: tbl-modelresults
+#| tbl-cap: "Poisson Regression Model Summary for Top English Football Teams"
+#| warning: false
+#| message: false
+#| results: 'asis'  # Ensures that only the table is printed
+
+library(modelsummary)
+
+modelsummary::modelsummary(
+  list("Poisson Regression Model" = poisson_model),
+  fmt = 2  # Adjust this parameter as needed for number formatting
+)
+The key options here are:
+
+echo: false – Ensures that the R code is not printed in the output.
+message: false – Suppresses messages that are generated by the code.
+warning: false – Suppresses warnings.
+results: 'asis' – In the summary chunk, ensures that only the model summary table is displayed without additional formatting.
+These settings should help clean up your Quarto output, showing only the essential results (like your model summary table) without the R code or setup messages.
