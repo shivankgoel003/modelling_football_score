@@ -1,5 +1,5 @@
 ---
-title: "Impact of Data Errors on Statisitcal Analyses"
+title: "Goal Predictions and Team Strategies: Analyzing English Championship Football Matches"
 author: 
   - Shivank  Goel
 thanks: "Code and data are available at: https://github.com/shivankgoel003/modelling_football_score"
